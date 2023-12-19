@@ -223,6 +223,10 @@ static inline int update_mac_and_send_mbuf(struct arp_table *entry, prox_rte_eth
 
 int write_dst_mac(struct task_base *tbase, struct rte_mbuf *mbuf, uint32_t *ip_dst, uint16_t *vlan, uint64_t **time, uint64_t tsc)
 {
+	// Added for routing mode in l3 submode to SEND MBUF.
+        // No need to send ARP request as the destination MAC is known from lua.
+        if(tbase->l3.mac_from_lua_no_arp) { return SEND_MBUF; }
+	
 	const uint64_t hz = rte_get_tsc_hz();
 	struct ether_hdr_arp *packet = rte_pktmbuf_mtod(mbuf, struct ether_hdr_arp *);
 	prox_rte_ether_addr *mac = &packet->ether_hdr.d_addr;
