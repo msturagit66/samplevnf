@@ -49,3 +49,5 @@ route table=lpm4<br>
 rx port=if0<br>
 tx port=if1,if0<br>
 drop=no<br>
+
+This is supported for IPv4 only.
