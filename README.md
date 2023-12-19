@@ -20,7 +20,7 @@ that is configured on port 1/if1 to reach the destination. The original behaviou
 requesting the MAC address of IP 10.23.164.244, which is not on the network connected to this port.
 
 The code has been modified to avoid sending ARP request when a lua table is available for routing, therefore the destination
-MAC address is available there. In this case, the modified code SEND MBUF directly to the specified port in lua table.
+MAC address is available there. In this case, the modified code SEND MBUF directly to the port specified in lua table.
 For example:
 
 lpm4.next_hops = {
@@ -31,3 +31,21 @@ The packet is routed and sent directly to the gateway at MAC address 00:50:56:aa
 
 This behaviour is controlled by the following introduced configuration parameter of sub mode l3:
 - mac from lua = yes/no
+
+If this parameter is included in the configuration without sub mode l3, it is ignored.
+
+Note that the folllowing core configuration (reverting the tx ports), will cause the PROX to not reply to the ARP request
+sent from the outside on rx port 0/if0. Therefore failing to receive packets.
+
+[core 3s0]
+name=Routing
+task=0
+mode=routing
+sub mode=l3
+;fast path handle arp=yes
+local ipv4=10.23.118.245
+gateway ipv4=10.23.118.244
+route table=lpm4
+rx port=if0
+tx port=if1,if0
+drop=no
