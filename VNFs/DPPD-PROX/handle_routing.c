@@ -84,6 +84,12 @@ static void init_task_routing(struct task_base *tbase, struct task_args *targ)
 	const int socket_id = rte_lcore_to_socket_id(targ->lconf->id);
 	struct lpm4 *lpm;
 
+	// Added for routing mode in l3 submode to SEND MBUF.
+        // No need to send ARP request as the destination MAC is known from lua.
+        if (targ->dst_mac_from_lua) {
+                tbase->l3.mac_from_lua_no_arp = true;
+        } else { tbase->l3.mac_from_lua_no_arp = false; }
+
 	task->lconf = targ->lconf;
 	task->qinq_tag = targ->qinq_tag;
 	task->runtime_flags = targ->runtime_flags;
