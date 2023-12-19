@@ -1498,6 +1498,14 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
 		return 0;
 	}
 
+        // Added for routing mode in l3 submode to SEND MBUF.
+        // No need to send ARP request as the destination MAC is known from lua.
+        if (STR_EQ(str, "mac from lua")) {
+               if ((targ->task_init->flag_features & TASK_FEATURE_ROUTING != 0) && (targ->flags & TASK_ARG_L3 !=0)) {
+                        return parse_bool(&targ->dst_mac_from_lua, pkey);
+               } else { return 0; }
+        }
+
 	if (STR_EQ(str, "mempool name")) {
 		return parse_str(targ->pool_name, pkey, sizeof(targ->pool_name));
 	}
