@@ -29,6 +29,7 @@
 #include "flow_iter.h"
 #include "parse_utils.h"
 #include "prox_compat.h"
+#include <stdbool.h>  // Added for routing mode in l3 submode (use boolean)
 
 struct rte_mbuf;
 struct lcore_cfg;
@@ -130,6 +131,9 @@ struct task_args {
 	struct qos_cfg         qos_conf;
 	uint32_t               flags;
 	uint32_t               runtime_flags;
+        // Added dst_mac_from_lua for routing mode in l3 submode to SEND MBUF.
+        // No need to send ARP request as the destination MAC is known from lua.
+        bool                   dst_mac_from_lua;
 	uint8_t                nb_txports;
 	uint8_t                nb_txrings;
 	uint8_t                nb_rxrings;
