@@ -25,6 +25,7 @@
 #include "defaults.h"
 #include "prox_cfg.h"
 #include "etypes.h"
+#include <stdbool.h>  // Added for routing mode in l3 submode (use boolean)
 
 #define FLAG_DST_MAC_KNOWN	1
 #define MAX_ARP_ENTRIES	65536
@@ -70,6 +71,9 @@ struct l3_base {
 	struct arp_table *arp_table;
 	struct rte_lpm *ipv4_lpm;
 	struct arp_table *next_hops;
+        // Added for routing mode in l3 submode to SEND MBUF.
+        // No need to send ARP request as the destination MAC is known from lua.
+        bool   mac_from_lua_no_arp;
 	struct rte_mempool *arp_nd_pool;
 	struct ipv6_addr local_ipv6;
 	struct ipv6_addr global_ipv6;
