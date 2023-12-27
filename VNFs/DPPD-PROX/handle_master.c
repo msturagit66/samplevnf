@@ -346,6 +346,34 @@ static inline void handle_unknown_ip(struct task_base *tbase, struct rte_mbuf *m
 	tx_ring(tbase, ring, SEND_ARP_REQUEST_FROM_MASTER, mbuf);
 }
 
+//Checksum calculation as per RFC1071
+static uint16_t checksum(void *addr, int count)
+{
+    /* Compute Internet Checksum for "count" bytes
+     *         beginning at location "addr".
+     * Taken from https://tools.ietf.org/html/rfc1071
+     */
+
+    register uint32_t sum = 0;
+    uint16_t * ptr = addr;
+
+    while( count > 1 )  {
+        /*  This is the inner loop */
+        sum += * ptr++;
+        count -= 2;
+    }
+
+    /*  Add left-over byte, if any */
+    if( count > 0 )
+        sum += * (uint8_t *) ptr;
+
+    /*  Fold 32-bit sum to 16 bits */
+    while (sum>>16)
+        sum = (sum & 0xffff) + (sum >> 16);
+
+    return ~sum;
+}
+
 static inline void build_icmp_reply_message(struct task_base *tbase, struct rte_mbuf *mbuf)
 {
 	struct task_master *task = (struct task_master *)tbase;
@@ -371,6 +399,12 @@ static inline void build_icmp_reply_message(struct task_base *tbase, struct rte_
 	} else {
 		struct rte_ring *ring = task->internal_ip_table[ret].ring;
 		mbuf->ol_flags &= ~(RTE_MBUF_F_TX_IP_CKSUM|RTE_MBUF_F_TX_UDP_CKSUM);
+		//Start changes to calculate ICMP checksum correctly
+        picmp->icmp_cksum = 0;
+        uint8_t *icmp_data_ptr = rte_pktmbuf_mtod_offset(mbuf, uint8_t *, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
+        int icmp_lenght = mbuf->pkt_len - sizeof(struct rte_ether_hdr) - sizeof(struct rte_ipv4_hdr);
+        picmp->icmp_cksum = checksum(icmp_data_ptr, icmp_lenght);
+        //End changes
 		tx_ring(tbase, ring, SEND_ICMP_FROM_MASTER, mbuf);
 	}
 }
