@@ -1,4 +1,4 @@
-This is a slightly modified version of the PROX (Packet pROcessing eXecution engine).
+This is a modified version of the PROX (Packet pROcessing eXecution engine).
 When configured in routing mode and sub mode l3, the original code always trigger an ARP request to the main transmit port configured
 for the core that received the packet to be routed. However, the destination or the gateway may not be on that port.
 For example, using the below configuration:
