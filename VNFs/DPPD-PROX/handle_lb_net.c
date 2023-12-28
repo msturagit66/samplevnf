@@ -50,13 +50,13 @@ struct task_lb_net {
 	uint8_t               nb_worker_threads;
 	uint8_t               worker_byte_offset_ipv4;
 	uint8_t               worker_byte_offset_ipv6;
-	uint8_t               runtime_flags;
+	uint32_t              runtime_flags;  // was uint8_t that is wrong as the features tag is defined 32 bits.
 };
 
 struct task_lb_net_lut {
 	struct task_base      base;
 	uint8_t               nb_worker_threads;
-	uint8_t               runtime_flags;
+	uint32_t              runtime_flags; // was uint8_t that is wrong as the features tag is defined 32 bits.
 	struct rte_table_hash *worker_hash_table;
 	uint8_t               *worker_lut;
 	uint32_t              keys[64];
@@ -191,7 +191,7 @@ static void init_task_lb_net(struct task_base *tbase, struct task_args *targ)
 	struct task_lb_net *task = (struct task_lb_net *)tbase;
 
 	task->qinq_tag = targ->qinq_tag;
-	task->runtime_flags = targ->runtime_flags;
+	task->runtime_flags = targ->task_init->flag_features;; //targ->runtime_flags was used, that is wrong.
 	task->worker_byte_offset_ipv6 = 23;
 	task->worker_byte_offset_ipv4 = 15;
 	task->nb_worker_threads       = targ->nb_worker_threads;
@@ -202,12 +202,26 @@ static void init_task_lb_net(struct task_base *tbase, struct task_args *targ)
 	task->bit_mask = rte_is_power_of_2(targ->nb_worker_threads) ? targ->nb_worker_threads - 1 : 0xff;
 }
 
+static void init_task_lb_net_ipv4(struct task_base *tbase, struct task_args *targ)
+{
+        struct task_lb_net *task = (struct task_lb_net *)tbase;
+
+        task->runtime_flags = targ->task_init->flag_features;
+        task->worker_byte_offset_ipv4 = 15;
+        task->nb_worker_threads = targ->nb_worker_threads;
+        /* The optimal configuration is when the number of worker threads
+           is a power of 2. In that case, a bit_mask can be used. Setting
+           the bitmask to 0xff disables the "optimal" usage of bitmasks
+           and the actual number of worker threads will be used instead. */
+        task->bit_mask = rte_is_power_of_2(targ->nb_worker_threads) ? targ->nb_worker_threads - 1 : 0xff;
+}
+
 static void init_task_lb_net_lut(struct task_base *tbase, struct task_args *targ)
 {
 	struct task_lb_net_lut *task = (struct task_lb_net_lut *)tbase;
 	const int socket_id = rte_lcore_to_socket_id(targ->lconf->id);
 
-	task->runtime_flags = targ->runtime_flags;
+	task->runtime_flags = targ->task_init->flag_features; //targ->runtime_flags was used, that is wrong.
 	task->nb_worker_threads       = targ->nb_worker_threads;
 	for (uint32_t i = 0; i < 64; ++i) {
 		task->fake_packets[i] = (struct rte_mbuf*)((uint8_t*)&task->keys[i] - sizeof (struct rte_mbuf));
@@ -221,8 +235,8 @@ static void init_task_lb_net_indexed_table(struct task_base *tbase, struct task_
 	struct task_lb_net_lut *task = (struct task_lb_net_lut *)tbase;
 	const int socket_id = rte_lcore_to_socket_id(targ->lconf->id);
 
-	task->runtime_flags = targ->runtime_flags;
-	task->nb_worker_threads       = targ->nb_worker_threads;
+	task->runtime_flags = targ->task_init->flag_features; //targ->runtime_flags was used, that is wrong.
+	task->nb_worker_threads = targ->nb_worker_threads;
 
 	task->worker_lut = setup_wt_indexed_table(targ, task->nb_worker_threads, socket_id);
 }
@@ -450,6 +464,11 @@ static inline uint8_t lb_ip4(struct task_lb_net *task, prox_rte_ipv4_hdr *ip)
 		uint8_t worker = worker_from_mask(task, rte_bswap32(ip->dst_addr));
 		return worker + task->nb_worker_threads * IPV4;
 	}
+	// Added to handle TCP and ICMP when lb mode is lbnetipv4
+	else if ((task->runtime_flags & TASK_FEATURE_LB_IPV4) && (ip->next_proto_id == IPPROTO_TCP || ip->next_proto_id == IPPROTO_ICMP)) {
+            uint8_t worker = worker_from_mask(task, rte_bswap32(ip->dst_addr));
+            return worker + task->nb_worker_threads * IPV4;
+    }
 	return OUT_DISCARD;
 }
 
@@ -505,6 +524,13 @@ static inline uint8_t lb_qinq(struct task_lb_net *task, struct qinq_hdr *qinq)
 	return worker_from_mask(task, qinq_tags);
 }
 
+// Added function to load balance based on souce mac address, for ARP requests. 
+// Used when l3 is configured on workers.
+static inline uint8_t lb_mac(struct task_lb_net *task, prox_rte_ether_addr mac_addr)
+{
+    return mac_addr.addr_bytes[5] % task->nb_worker_threads;
+}
+
 static inline uint8_t handle_lb_net(struct task_lb_net *task, struct rte_mbuf *mbuf)
 {
 	prox_rte_ether_hdr *peth = rte_pktmbuf_mtod(mbuf, prox_rte_ether_hdr *);
@@ -528,6 +554,10 @@ static inline uint8_t handle_lb_net(struct task_lb_net *task, struct rte_mbuf *m
 	default:
 		if (peth->ether_type == task->qinq_tag)
 			return lb_qinq(task, (struct qinq_hdr *)peth);
+		//Added to handle ARP with mode lbnetipv4, workers in routing mode and l3 sub mode
+		else if ((peth->ether_type == ETYPE_ARP) && (task->runtime_flags & TASK_FEATURE_LB_IPV4)) {
+                    return lb_mac(task, peth->s_addr);
+        }
 		plogd_warn(mbuf, "Unexpected frame Ether type = %#06x for packet : \n", peth->ether_type);
 		return OUT_DISCARD;
 	}
@@ -541,6 +571,15 @@ static struct task_init task_init_lb_net = {
 	.handle = handle_lb_net_bulk,
 	.size = sizeof(struct task_lb_net),
 	.flag_features = TASK_FEATURE_GRE_ID
+};
+
+//Added mode lbnepipv4 
+static struct task_init task_init_lb_net_ipv4 = {
+    .mode_str = "lbnetipv4",
+    .init = init_task_lb_net_ipv4,
+    .handle = handle_lb_net_bulk,
+    .size = sizeof(struct task_lb_net),
+    .flag_features = TASK_FEATURE_LB_IPV4
 };
 
 static struct task_init task_init_lb_net_lut_qinq_rss = {
@@ -582,6 +621,8 @@ static struct task_init task_init_lb_net_indexed_table_hash = {
 __attribute__((constructor)) static void reg_task_lb_net(void)
 {
 	reg_task(&task_init_lb_net);
+	//Added task_init_lb_net_ipv4
+    reg_task(&task_init_lb_net_ipv4);
 	reg_task(&task_init_lb_net_lut_qinq_rss);
 	reg_task(&task_init_lb_net_lut_qinq_hash);
 	reg_task(&task_init_lb_net_indexed_table_rss);

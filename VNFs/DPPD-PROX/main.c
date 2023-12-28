@@ -53,6 +53,8 @@
 #define RTE_CACHE_LINE_SIZE CACHE_LINE_SIZE
 #endif
 
+#define UNDEFINED_VALUE 255
+
 uint8_t lb_nb_txrings = 0xff;
 extern const char *git_version;
 struct rte_ring *ctrl_rings[RTE_MAX_LCORE*MAX_TASKS_PER_CORE];
@@ -152,6 +154,34 @@ static void check_nb_mbuf(void)
 	}
 }
 
+// Added to check if software rings are configured.
+// Used when L3 sub mode is set on workers (with lbnetipv4)
+static int verify_rx_rings(void)
+{
+    struct lcore_cfg *lconf = NULL;
+    struct task_args *targ;
+    uint8_t cores_cnt = 0, sw_rings = 0;
+    uint8_t core_curr = UNDEFINED_VALUE;
+
+    while (core_targ_next(&lconf, &targ, 0) == 0) {
+            if (strcmp(targ->sub_mode_str, "l3") == 0) {
+                for (uint8_t ring_idx = 0; ring_idx < targ->nb_rxrings; ++ring_idx) {
+                    if (lconf->id != core_curr) {
+                        cores_cnt++;
+                    }
+                    core_curr = lconf->id;
+                    sw_rings++;
+                }
+            }
+    }
+
+    if (cores_cnt < sw_rings) {
+        plog_info("Number of worker cores %u, number of rings %u\n", cores_cnt, sw_rings);
+        return 1;
+    }
+    else return 0;
+}
+
 static void check_missing_rx(void)
 {
 	struct lcore_cfg *lconf = NULL, *rx_lconf = NULL, *tx_lconf = NULL;
@@ -166,6 +196,9 @@ static void check_missing_rx(void)
 				   "\tCore %u task %u: no rx_ports and no rx_rings configured while required by mode %s\n", lconf->id, targ->id, targ->task_init->mode_str);
 		}
 	}
+
+	// Added to hanlde L3 when set on workers and receinving from rx ring.
+    int receive_from_ring = verify_rx_rings();
 
 	lconf = NULL;
 	while (core_targ_next(&lconf, &targ, 0) == 0) {
@@ -201,26 +234,30 @@ static void check_missing_rx(void)
 		// receiving from that port in L3/NDP sub_mode.
 		if ((port_id = targ->tx_port_queue[0].port) == OUT_DISCARD)
 			continue;
-		rx_lconf = NULL;
-		ok = 0;
-		plog_info("\tCore %d task %d transmitting to port %d in %s submode\n", lconf->id, targ->id, port_id, l3 ? "l3":"ndp");
-		while (core_targ_next(&rx_lconf, &rx_targ, 0) == 0) {
-			for (uint8_t i = 0; i < rx_targ->nb_rxports; ++i) {
-				rx_port_id = rx_targ->rx_port_queue[i].port;
-				if ((rx_port_id == port_id) &&
-					( ((rx_targ->flags & TASK_ARG_L3) && l3) ||
-					((rx_targ->flags & TASK_ARG_NDP) && ndp) ) ){
-					ok = 1;
+
+		// Added to hanlde L3 when set on workers and receinving from rx ring.
+        if (!receive_from_ring) {
+			rx_lconf = NULL;
+			ok = 0;
+			plog_info("\tCore %d task %d transmitting to port %d in %s submode\n", lconf->id, targ->id, port_id, l3 ? "l3":"ndp");
+			while (core_targ_next(&rx_lconf, &rx_targ, 0) == 0) {
+				for (uint8_t i = 0; i < rx_targ->nb_rxports; ++i) {
+					rx_port_id = rx_targ->rx_port_queue[i].port;
+					if ((rx_port_id == port_id) &&
+						( ((rx_targ->flags & TASK_ARG_L3) && l3) ||
+						((rx_targ->flags & TASK_ARG_NDP) && ndp) ) ){
+						ok = 1;
+						break;
+					}
+				}
+				if (ok == 1) {
+					plog_info("\tCore %d task %d has found core %d task %d receiving from port %d in %s submode\n", lconf->id, targ->id, rx_lconf->id, rx_targ->id, port_id,
+					((rx_targ->flags & TASK_ARG_L3) && l3) ? "l3":"ndp");
 					break;
 				}
 			}
-			if (ok == 1) {
-				plog_info("\tCore %d task %d has found core %d task %d receiving from port %d in %s submode\n", lconf->id, targ->id, rx_lconf->id, rx_targ->id, port_id,
-					((rx_targ->flags & TASK_ARG_L3) && l3) ? "l3":"ndp");
-				break;
-			}
-		}
-		PROX_PANIC(ok == 0, "%s sub mode for port %d on core %d task %d, but no core/task receiving on that port\n", l3 ? "l3":"ndp", port_id, lconf->id, targ->id);
+			PROX_PANIC(ok == 0, "%s sub mode for port %d on core %d task %d, but no core/task receiving on that port\n", l3 ? "l3":"ndp", port_id, lconf->id, targ->id);
+		}	
 	}
 }
 

@@ -55,6 +55,7 @@
 #define TASK_FEATURE_LUT_QINQ_HASH             0x4000
 #define TASK_FEATURE_RX_ALL                    0x8000
 #define TASK_FEATURE_TXQ_FLAGS_MULTIPLE_MEMPOOL	0x20000
+#define TASK_FEATURE_LB_IPV4                   0x10000
 
 #define TBASE_FLAG_TX_FLUSH             0x01
 #define TBASE_FLAG_NEVER_FLUSH          0x02

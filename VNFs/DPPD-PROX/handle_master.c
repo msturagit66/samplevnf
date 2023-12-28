@@ -349,11 +349,6 @@ static inline void handle_unknown_ip(struct task_base *tbase, struct rte_mbuf *m
 //Checksum calculation as per RFC1071
 static uint16_t checksum(void *addr, int count)
 {
-    /* Compute Internet Checksum for "count" bytes
-     *         beginning at location "addr".
-     * Taken from https://tools.ietf.org/html/rfc1071
-     */
-
     register uint32_t sum = 0;
     uint16_t * ptr = addr;
 

@@ -388,7 +388,7 @@ uint16_t ring_deq(struct rte_ring *r, struct rte_mbuf **mbufs)
 #endif
 }
 
-uint16_t rx_pkt_sw(struct task_base *tbase, struct rte_mbuf ***mbufs)
+uint16_t rx_pkt_sw_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
 {
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
@@ -402,19 +402,25 @@ uint16_t rx_pkt_sw(struct task_base *tbase, struct rte_mbuf ***mbufs)
 
 	tbase->rx_params_sw.last_read_ring = lr;
 
-	if (nb_rx != 0) {
-		TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
-		return nb_rx;
-	}
-	else {
-		TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
-		return 0;
-	}
+    if (unlikely(nb_rx == 0)) {
+        TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
+        return 0;
+    }
+
+    if (l3_ndp == PROX_L3) {
+        skip = handle_l3(tbase, nb_rx, mbufs);
+    }
+
+    if (skip)
+        TASK_STATS_ADD_RX_NON_DP(&tbase->aux->stats, skip);
+
+    TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
+    return nb_rx - skip;
 }
 
 /* Same as rx_pkt_sw expect with a mask for the number of receive
    rings (can only be used if nb_rxring is a power of 2). */
-uint16_t rx_pkt_sw_pow2(struct task_base *tbase, struct rte_mbuf ***mbufs)
+uint16_t rx_pkt_sw_pow2_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
 {
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
@@ -428,14 +434,20 @@ uint16_t rx_pkt_sw_pow2(struct task_base *tbase, struct rte_mbuf ***mbufs)
 
 	tbase->rx_params_sw.last_read_ring = lr;
 
-	if (nb_rx != 0) {
-		TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
-		return nb_rx;
-	}
-	else {
-		TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
-		return 0;
-	}
+    if (unlikely(nb_rx == 0)) {
+        TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
+        return 0;
+    }
+
+    if (l3_ndp == PROX_L3) {
+        skip = handle_l3(tbase, nb_rx, mbufs);
+    }
+
+    if (skip)
+        TASK_STATS_ADD_RX_NON_DP(&tbase->aux->stats, skip);
+
+    TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
+    return nb_rx - skip;
 }
 
 uint16_t rx_pkt_self(struct task_base *tbase, struct rte_mbuf ***mbufs)
@@ -467,20 +479,56 @@ uint16_t rx_pkt_dummy(__attribute__((unused)) struct task_base *tbase,
 /* After the system has been configured, it is known if there is only
    one RX ring. If this is the case, a more specialized version of the
    function above can be used to save cycles. */
-uint16_t rx_pkt_sw1(struct task_base *tbase, struct rte_mbuf ***mbufs)
+uint16_t rx_pkt_sw1_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
 {
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
 	uint16_t nb_rx = ring_deq(tbase->rx_params_sw1.rx_ring, *mbufs);
 
-	if (nb_rx != 0) {
-		TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
-		return nb_rx;
-	}
-	else {
-		TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
-		return 0;
-	}
+    if (unlikely(nb_rx == 0)) {
+        TASK_STATS_ADD_IDLE(&tbase->aux->stats, rte_rdtsc() - cur_tsc);
+        return 0;
+    }
+
+    if (l3_ndp == PROX_L3) {
+        skip = handle_l3(tbase, nb_rx, mbufs);
+    }
+
+    if (skip)
+        TASK_STATS_ADD_RX_NON_DP(&tbase->aux->stats, skip);
+
+    TASK_STATS_ADD_RX(&tbase->aux->stats, nb_rx);
+    return nb_rx - skip;
+}
+
+uint16_t rx_pkt_sw(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw_param(tbase, mbufs, 0);
+}
+
+uint16_t rx_pkt_sw_pow2(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw_pow2_param(tbase, mbufs, 0);
+}
+
+uint16_t rx_pkt_sw1(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw1_param(tbase, mbufs, 0);
+}
+
+uint16_t rx_pkt_sw_l3(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw_param(tbase, mbufs, PROX_L3);
+}
+
+uint16_t rx_pkt_sw_pow2_l3(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw_pow2_param(tbase, mbufs, PROX_L3);
+}
+
+uint16_t rx_pkt_sw1_l3(struct task_base *tbase, struct rte_mbuf ***mbufs)
+{
+    return rx_pkt_sw1_param(tbase, mbufs, PROX_L3);
 }
 
 static uint16_t call_prev_rx_pkt(struct task_base *tbase, struct rte_mbuf ***mbufs)

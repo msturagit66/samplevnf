@@ -50,6 +50,9 @@ uint16_t rx_pkt_hw1_multi_ndp(struct task_base *tbase, struct rte_mbuf ***mbufs)
 uint16_t rx_pkt_sw(struct task_base *tbase, struct rte_mbuf ***mbufs);
 uint16_t rx_pkt_sw_pow2(struct task_base *tbase, struct rte_mbuf ***mbufs);
 uint16_t rx_pkt_sw1(struct task_base *tbase, struct rte_mbuf ***mbufs);
+uint16_t rx_pkt_sw_l3(struct task_base *tbase, struct rte_mbuf ***mbufs);
+uint16_t rx_pkt_sw_pow2_l3(struct task_base *tbase, struct rte_mbuf ***mbufs);
+uint16_t rx_pkt_sw1_l3(struct task_base *tbase, struct rte_mbuf ***mbufs);
 uint16_t rx_pkt_self(struct task_base *tbase, struct rte_mbuf ***mbufs);
 uint16_t rx_pkt_dummy(struct task_base *tbase, struct rte_mbuf ***mbufs);
 uint16_t rx_pkt_dump(struct task_base *tbase, struct rte_mbuf ***mbufs);

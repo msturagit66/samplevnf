@@ -153,21 +153,27 @@ static size_t init_rx_tx_rings_ports(struct task_args *targ, struct task_base *t
 	else if (targ->nb_rxrings != 0) {
 
 		if (targ->nb_rxrings == 1) {
-			tbase->rx_pkt = rx_pkt_sw1;
+			if (targ->flags & TASK_ARG_L3)
+			    tbase->rx_pkt = rx_pkt_sw1_l3;
+			else tbase->rx_pkt = rx_pkt_sw1;
 			tbase->rx_params_sw1.rx_ring = targ->rx_rings[0];
 		}
 		else {
-			tbase->rx_pkt = rx_pkt_sw;
-			tbase->rx_params_sw.nb_rxrings = targ->nb_rxrings;
-			tbase->rx_params_sw.rx_rings = (struct rte_ring **)(((uint8_t *)tbase) + offset);
-			offset += sizeof(struct rte_ring *)*tbase->rx_params_sw.nb_rxrings;
+               if (targ->flags & TASK_ARG_L3)
+                    tbase->rx_pkt = rx_pkt_sw_l3;
+			    else tbase->rx_pkt = rx_pkt_sw;
+			   tbase->rx_params_sw.nb_rxrings = targ->nb_rxrings;
+			   tbase->rx_params_sw.rx_rings = (struct rte_ring **)(((uint8_t *)tbase) + offset);
+			   offset += sizeof(struct rte_ring *)*tbase->rx_params_sw.nb_rxrings;
 
 			for (uint8_t i = 0; i < tbase->rx_params_sw.nb_rxrings; ++i) {
 				tbase->rx_params_sw.rx_rings[i] = targ->rx_rings[i];
 			}
 
 			if (rte_is_power_of_2(targ->nb_rxrings)) {
-				tbase->rx_pkt = rx_pkt_sw_pow2;
+				if (targ->flags & TASK_ARG_L3)
+                    tbase->rx_pkt = rx_pkt_sw_pow2_l3;
+				else tbase->rx_pkt = rx_pkt_sw_pow2;
 				tbase->rx_params_sw.rxrings_mask = targ->nb_rxrings - 1;
 			}
 		}
