@@ -19,13 +19,15 @@
 
 /* PROGRAM_NAME defined through Makefile */
 #define VERSION_MAJOR 0      // Pre-production
-#define VERSION_MINOR 2212   // 22.12 i.e. December 2022
+//#define VERSION_MINOR 2212   // 22.12 i.e. December 2022
+#define VERSION_MINOR "22.12-vmw0.1"   // December 2023, VMware to allow alphanumeric version.
 #define VERSION_REV   0
 
 static inline char *VERSION_STR(void)
 {
 	static char version_buffer[32];
-	snprintf(version_buffer, sizeof(version_buffer), "%02d.%02d", VERSION_MINOR / 100, VERSION_MINOR % 100);
+	//snprintf(version_buffer, sizeof(version_buffer), "%02d.%02d", VERSION_MINOR / 100, VERSION_MINOR % 100);
+	snprintf(version_buffer, sizeof(version_buffer), "%s", VERSION_MINOR);
 #if VERSION_REV > 0
 	snprintf(version_buffer + strlen(version_buffer), sizeof(version_buffer) - strlen(version_buffer), ".%02d", VERSION_REV);
 #endif
