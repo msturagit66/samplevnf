@@ -1,4 +1,4 @@
-This is a modified version of the PROX (Packet pROcessing eXecution engine).
+This is a modified version of the PROX (Packet pROcessing eXecution engine). Version is changed to 22.12-vmw.
 
 The following changes are introduced:
 - A new behaviour for routing mode with l3 sub mode.
