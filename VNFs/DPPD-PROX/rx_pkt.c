@@ -388,8 +388,10 @@ uint16_t ring_deq(struct rte_ring *r, struct rte_mbuf **mbufs)
 #endif
 }
 
-uint16_t rx_pkt_sw_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
+static inline uint16_t rx_pkt_sw_param(struct task_base *tbase, struct rte_mbuf ***mbufs, int l3_ndp)
 {
+	int skip = 0;
+	
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
 	uint8_t lr = tbase->rx_params_sw.last_read_ring;
@@ -420,8 +422,10 @@ uint16_t rx_pkt_sw_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
 
 /* Same as rx_pkt_sw expect with a mask for the number of receive
    rings (can only be used if nb_rxring is a power of 2). */
-uint16_t rx_pkt_sw_pow2_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
+static inline uint16_t rx_pkt_sw_pow2_param(struct task_base *tbase, struct rte_mbuf ***mbufs, int l3_ndp)
 {
+	int skip = 0;
+	
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
 	uint8_t lr = tbase->rx_params_sw.last_read_ring;
@@ -479,8 +483,10 @@ uint16_t rx_pkt_dummy(__attribute__((unused)) struct task_base *tbase,
 /* After the system has been configured, it is known if there is only
    one RX ring. If this is the case, a more specialized version of the
    function above can be used to save cycles. */
-uint16_t rx_pkt_sw1_param(struct task_base *tbase, struct rte_mbuf ***mbufs)
+static inline uint16_t rx_pkt_sw1_param(struct task_base *tbase, struct rte_mbuf ***mbufs, int l3_ndp)
 {
+	int skip = 0;
+	
 	START_EMPTY_MEASSURE();
 	*mbufs = tbase->ws_mbuf->mbuf[0] + (tbase->ws_mbuf->idx[0].prod & WS_MBUF_MASK);
 	uint16_t nb_rx = ring_deq(tbase->rx_params_sw1.rx_ring, *mbufs);
