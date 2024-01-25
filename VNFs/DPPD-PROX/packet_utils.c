@@ -599,7 +599,7 @@ void task_start_l3(struct task_base *tbase, struct task_args *targ)
 			// Last "next_hop_index" is default gw
 			tbase->l3.next_hops[tbase->l3.nb_gws].ip = rte_bswap32(targ->gateway_ipv4);
 			if (targ->gateway_ipv4) {
-				ret = rte_lpm_add(tbase->l3.ipv4_lpm, targ->gateway_ipv4, 0, tbase->l3.nb_gws++);
+				ret = rte_lpm_add(tbase->l3.ipv4_lpm, targ->gateway_ipv4, 32, tbase->l3.nb_gws++);
 				PROX_PANIC(ret, "Failed to add gateway_ipv4 "IPv4_BYTES_FMT"/%d to lpm\n", IP4(tbase->l3.gw.ip), 0);
 			}
 		}
