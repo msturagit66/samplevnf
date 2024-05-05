@@ -271,6 +271,15 @@ static size_t init_rx_tx_rings_ports(struct task_args *targ, struct task_base *t
 				tbase->tx_params_hw.tx_port_queue[i].queue = targ->tx_port_queue[i].queue;
 			}
 
+			//Added to suport dedicated port different from Tx ports
+		    //in routing and l3 submode with single Tx interface  
+             if (targ->local_ipv4_port !=255) {
+                    tbase->tx_ctrlplane_params_hw.tx_port_queue = (struct port_queue *)(((uint8_t *)tbase) + offset);
+                    offset += sizeof(struct port_queue);
+                    tbase->tx_ctrlplane_params_hw.tx_port_queue->port = targ->tx_port_queue_ctrlplane.port;
+                    tbase->tx_ctrlplane_params_hw.tx_port_queue->queue = targ->tx_port_queue_ctrlplane.queue;
+            }
+
 			offset = RTE_ALIGN_CEIL(offset, RTE_CACHE_LINE_SIZE);
 			tbase->ws_mbuf = (struct ws_mbuf *)(((uint8_t *)tbase) + offset);
 			offset += sizeof(struct ws_mbuf) + sizeof(((struct ws_mbuf*)0)->mbuf[0]) * tbase->tx_params_hw.nb_txports;
@@ -374,6 +383,11 @@ struct task_base *init_task_struct(struct task_args *targ)
 	if (targ->flags & (TASK_ARG_L3|TASK_ARG_NDP)) {
 		plog_info("\t\tTask (%d,%d) configured in L3/NDP mode\n", targ->lconf->id, targ->id);
 		tbase->l3.ctrl_plane_ring = targ->ctrl_plane_ring;
+
+		//Added to suport dedicated port different from Tx ports
+		//in routing and l3 submode with single Tx interface  
+		tbase->l3.ctrlplane_pkt_tx_port = targ->local_ipv4_port;
+
 		if (targ->nb_txports != 0) {
 			tbase->aux->tx_pkt_l2 = tbase->tx_pkt;
 			tbase->aux->tx_ctrlplane_pkt = targ->nb_txrings ? tx_ctrlplane_sw : tx_ctrlplane_hw;

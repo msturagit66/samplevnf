@@ -1575,6 +1575,11 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
 	}
 	if (STR_EQ(str, "local ipv4")) { /* source IP address to be used for packets */
 		struct ip4_subnet cidr;
+
+		//Added to suport dedicated port different from Tx ports
+		//in routing and l3 submode with single Tx interface  
+        targ->local_ipv4_port = 255;
+
 		if (parse_ip4_and_prefix(&cidr, pkey) != 0) {
 			if (targ->gateway_ipv4)
 				targ->local_prefix = 32;
@@ -1587,6 +1592,31 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
 			return 0;
 		}
 	}
+
+	//Added to control routing mode with l3 submode with single Tx port.
+	//It configures l3 IPv4 address and control plane on the specified port.
+    if (STR_EQ(str, "configure ipv4 on port")) {
+
+            uint32_t n_if = 0;
+            uint32_t ports[PROX_MAX_PORTS];
+
+            if ((targ->task_init->flag_features & TASK_FEATURE_ROUTING) && (targ->flags & TASK_ARG_L3)) {
+                    if (parse_port_name_list(ports, &n_if, 1, pkey) == -1) {
+                            plog_err("IPv4 can be configured only for one port per task\n");
+                            return -1;
+                    }
+            } else {
+                        parse_port_name_list(ports, &n_if, 1, pkey);
+                        plog_err("Configuring IPv4 on port %d requires routing mode and  l3 submode\n", ports[0]);
+                        return -1;
+                    }
+
+            targ->local_ipv4_port = ports[0];
+            targ->tx_port_queue_ctrlplane.port = ports[0];
+
+            return 0;
+        }
+	
 	if (STR_EQ(str, "remote ipv4")) { /* source IP address to be used for packets */
 		return parse_ip(&targ->remote_ipv4, pkey);
 	}

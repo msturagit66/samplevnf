@@ -131,9 +131,9 @@ struct task_args {
 	struct qos_cfg         qos_conf;
 	uint32_t               flags;
 	uint32_t               runtime_flags;
-        // Added dst_mac_from_lua for routing mode in l3 submode to SEND MBUF.
-        // No need to send ARP request as the destination MAC is known from lua.
-        bool                   dst_mac_from_lua;
+    // Added dst_mac_from_lua for routing mode in l3 submode to SEND MBUF.
+    // No need to send ARP request as the destination MAC is known from lua.
+    bool                   dst_mac_from_lua;
 	uint8_t                nb_txports;
 	uint8_t                nb_txrings;
 	uint8_t                nb_rxrings;
@@ -143,6 +143,9 @@ struct task_args {
 	uint32_t               ipv6_router;
 	uint32_t               gateway_ipv4;
 	uint32_t               local_ipv4;
+	//Added to suport dedicated port different from Tx ports
+	//in routing and l3 submode with single Tx interface
+	uint8_t                local_ipv4_port;
 	uint32_t               remote_ipv4;
 	uint32_t               local_prefix;
 	uint32_t               reachable_timeout;
@@ -159,6 +162,9 @@ struct task_args {
 	prox_rte_ether_addr      esaddr;
 	struct port_queue      tx_port_queue[PROX_MAX_PORTS];
 	struct port_queue      rx_port_queue[PROX_MAX_PORTS];
+	//Added to suport dedicated port different from Tx ports
+	//in routing and l3 submode with single Tx interface
+    struct port_queue      tx_port_queue_ctrlplane;
 	/* Used to set up actual task at initialization time. */
 	enum task_mode         mode;
 	/* Destination output position in hw or sw when using mac learned dest port. */

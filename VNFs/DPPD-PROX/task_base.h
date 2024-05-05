@@ -119,6 +119,12 @@ struct tx_params_hw {
 	struct port_queue *tx_port_queue;
 } __attribute__((packed));
 
+//Added to suport dedicated port different from Tx ports
+//in routing and l3 submode with single Tx interface
+struct tx_ctrlplane_params_hw {
+    struct port_queue *tx_port_queue;
+} __attribute__((packed));
+
 struct tx_params_sw {
 	uint16_t         nb_txrings;
 	struct rte_ring **tx_rings;
@@ -210,6 +216,11 @@ struct task_base {
 		struct tx_params_sw tx_params_sw;
 		struct tx_params_hw_sw tx_params_hw_sw;
 	};
+
+	//Added to suport dedicated port different from Tx ports
+    //in routing and l3 submode with single Tx interface
+    struct tx_ctrlplane_params_hw tx_ctrlplane_params_hw;
+
 	struct l3_base l3;
 } __attribute__((packed)) __rte_cache_aligned;
 

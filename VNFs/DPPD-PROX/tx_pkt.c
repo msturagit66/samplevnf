@@ -862,7 +862,14 @@ static inline void dump_pkts(struct task_base *tbase, struct rte_mbuf **mbufs, u
 int tx_ctrlplane_hw(struct task_base *tbase, struct rte_mbuf **mbufs, uint16_t n_pkts, __attribute__((unused)) uint8_t *out)
 {
 	dump_pkts(tbase, mbufs, n_pkts);
-	return txhw_no_drop(&tbase->tx_params_hw.tx_port_queue[0], mbufs, n_pkts, tbase);
+
+	//Added to suport dedicated port different from Tx ports
+    //in routing and l3 submode with single Tx interface
+	if (tbase->l3.ctrlplane_pkt_tx_port !=255) {
+            return txhw_no_drop(tbase->tx_ctrlplane_params_hw.tx_port_queue, mbufs, n_pkts, tbase);
+    } else {
+                return txhw_no_drop(&tbase->tx_params_hw.tx_port_queue[0], mbufs, n_pkts, tbase);
+            }
 }
 
 int tx_ctrlplane_sw(struct task_base *tbase, struct rte_mbuf **mbufs, const uint16_t n_pkts, __attribute__((unused)) uint8_t *out)
