@@ -48,6 +48,7 @@ struct task_lb_net {
 	uint16_t              qinq_tag;
 	uint8_t               bit_mask;
 	uint8_t               nb_worker_threads;
+        uint8_t               next_worker_thread; //for roundrobin LB
 	uint8_t               worker_byte_offset_ipv4;
 	uint8_t               worker_byte_offset_ipv6;
 	uint32_t              runtime_flags;  // was uint8_t that is wrong as the features tag is defined 32 bits.
@@ -368,6 +369,14 @@ static inline uint8_t worker_from_mask(struct task_lb_net *task, uint32_t val)
 	}
 }
 
+static inline uint8_t worker_from_roundrobin(struct task_lb_net *task)
+{
+	uint8_t worker_thread = task->next_worker_thread;
+        task->next_worker_thread = (task->next_worker_thread + 1) % task->nb_worker_threads;
+
+        return worker_thread;
+}
+
 static inline int extract_gre_key(struct task_lb_net_lut *task, uint32_t *key, struct rte_mbuf *mbuf)
 {
 	// For all packets, one by one, remove MPLS tag if any and fills in keys used by "fake" packets
@@ -461,12 +470,19 @@ static inline uint8_t lb_ip4(struct task_lb_net *task, prox_rte_ipv4_hdr *ip)
 		}
 	}
 	else if (ip->next_proto_id == IPPROTO_UDP) {
-		uint8_t worker = worker_from_mask(task, rte_bswap32(ip->dst_addr));
-		return worker + task->nb_worker_threads * IPV4;
+		
+		if (task->runtime_flags & TASK_FEATURE_LB_IPV4) {
+			uint8_t worker = worker_from_roundrobin(task);
+			return worker + task->nb_worker_threads * IPV4;
+		}
+		else {
+		        uint8_t worker = worker_from_mask(task, rte_bswap32(ip->dst_addr));
+		        return worker + task->nb_worker_threads * IPV4;
+		}
 	}
 	// Added to handle TCP and ICMP when lb mode is lbnetipv4
 	else if ((task->runtime_flags & TASK_FEATURE_LB_IPV4) && (ip->next_proto_id == IPPROTO_TCP || ip->next_proto_id == IPPROTO_ICMP)) {
-            uint8_t worker = worker_from_mask(task, rte_bswap32(ip->dst_addr));
+            uint8_t worker = worker_from_roundrobin(task);
             return worker + task->nb_worker_threads * IPV4;
     }
 	return OUT_DISCARD;
