@@ -17,6 +17,10 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
 #include <rte_sched.h>
 #include <rte_string_fns.h>
 #include <rte_version.h>
@@ -47,6 +51,18 @@ struct cfg_depr {
 	const char *opt;
 	const char *info;
 };
+
+extern char **environ; // Access to the environment variables
+
+/* Function used to ensure upper case sriovdp resource_name */
+void to_uppercase(const char *input, char *output) {
+    while (*input) {
+        *output = (char)toupper((unsigned char)*input);
+        input++;
+        output++;
+    }
+    *output = '\0';
+}
 
 /* Helper macro */
 #define STR_EQ(s1, s2)	(!strcmp((s1), (s2)))
@@ -536,6 +552,38 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
 		PROX_ASSERT(cur_if < PROX_MAX_PORTS);
 		return add_port_name(cur_if, pkey);
 	}
+	else if (STR_EQ(str, "sriovdp resource name")) {
+        const char *resource_name = pkey;
+        const char *prefix = "PCIDEVICE_INTEL_COM_";
+
+        // Create buffer for the uppercase string
+        char uppercase_string[48];
+        to_uppercase(resource_name, uppercase_string);
+
+        // Allocate space for the final string
+        size_t final_length = strlen(prefix) + strlen(uppercase_string) + 1; // +1 for null terminator
+        char *final_string = (char *)malloc(final_length);
+
+        if (final_string == NULL) {
+            set_errf("Memory allocation failed");
+            return -1;
+        }
+        
+		// Concatenate the prefix and uppercase string
+        strcpy(final_string, prefix);
+        strcat(final_string, uppercase_string);
+
+        char *port_pci = getenv(final_string);
+        if (port_pci == NULL) {
+            set_errf("PCI addresses not found in environment variables");
+             return -1;
+        }
+
+        strncpy(cfg->pci_addr, port_pci, sizeof(cfg->pci_addr) - 1);
+        cfg->pci_addr[sizeof(cfg->pci_addr) - 1] = '\0';
+
+        free(final_string); // Free allocated
+    }
 	else if (STR_EQ(str, "rx desc")) {
 		return parse_int(&cfg->n_rxd, pkey);
 	}
@@ -2361,6 +2409,16 @@ int prox_setup_rte(const char *prog_name)
 		return -1;
 	}
 #endif
+
+    /* If running in container make sure only the required DPDK ports are reserved */
+    for (uint8_t port_id; port_id < PROX_MAX_PORTS; ++port_id) {
+        if (prox_port_cfg[port_id].pci_addr[0] != '\0') {
+            char *pci_addr = prox_port_cfg[port_id].pci_addr;
+
+            sprintf(rte_arg[++argc], "-a%s", pci_addr);
+            rte_argv[argc] = rte_arg[argc];
+        }
+    }
 
 	if (rte_cfg.memory) {
 		sprintf(rte_arg[++argc], "-m%u", rte_cfg.memory);
