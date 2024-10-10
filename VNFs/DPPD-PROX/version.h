@@ -20,7 +20,7 @@
 /* PROGRAM_NAME defined through Makefile */
 #define VERSION_MAJOR 0      // Pre-production
 //#define VERSION_MINOR 2212   // 22.12 i.e. December 2022
-#define VERSION_MINOR "22.12-vmw1.0"   // December 2023, VMware to allow alphanumeric version.
+#define VERSION_MINOR "22.12-vmw1.1"   // October 2024, better support in container environment.
 #define VERSION_REV   0
 
 static inline char *VERSION_STR(void)
