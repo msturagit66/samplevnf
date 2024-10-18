@@ -505,8 +505,8 @@ void task_init_l3(struct task_base *tbase, struct task_args *targ)
 		hash_name[0]++;
 
 		//Added to suport dedicated port different from Tx ports
-        //in routing and l3 submode with single Tx interface				
-        tbase->l3.ctrlplane_pkt_tx_port = targ->local_ipv4_port;
+                //in routing and l3 submode with single Tx interface				
+                tbase->l3.ctrlplane_pkt_tx_port = targ->local_ipv4_port;
 	}
 
 	if (targ->flags & TASK_ARG_NDP) {
@@ -545,15 +545,16 @@ void task_start_l3(struct task_base *tbase, struct task_args *targ)
 	const int ARP_ND_MBUF_SIZE = 2048;
 	const int NB_CACHE_ARP_ND_MBUF = 256;
 
-	struct prox_port_cfg *port = find_reachable_port(targ);
+        //Changed to suport dedicated port different from Tx ports
+        //in routing and l3 submode with single Tx interface
+	struct prox_port_cfg *port = NULL;
+        if (targ->local_ipv4_port == 255) {
+                port = find_reachable_port(targ);
+        } else { port = &prox_port_cfg[targ->local_ipv4_port]; }
+	
         if (port && (tbase->l3.arp_nd_pool == NULL)) {
 		static char name[] = "arp0_pool";
-
-		//Added to suport dedicated port different from Tx ports
-        //in routing and l3 submode with single Tx interface
-        if (targ->local_ipv4_port == 255) {
-                tbase->l3.reachable_port_id = port - prox_port_cfg;
-        } else { tbase->l3.reachable_port_id = targ->local_ipv4_port; }
+		tbase->l3.reachable_port_id = port - prox_port_cfg;
         
 		if ((targ->local_ipv4 && port->ip_addr[0].ip) && (targ->local_ipv4 != port->ip_addr[0].ip)) {
 			PROX_PANIC(1, "local_ipv4 in core section ("IPv4_BYTES_FMT") differs from port section ("IPv4_BYTES_FMT")\n", IP4(rte_be_to_cpu_32(targ->local_ipv4)), IP4(rte_be_to_cpu_32(port->ip_addr[0].ip)));
