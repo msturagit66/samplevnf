@@ -404,7 +404,6 @@ static inline void build_icmp_reply_message(struct task_base *tbase, struct rte_
 	prox_rte_ether_addr_copy(&hdr->s_addr, &dst_mac);
 	prox_rte_ether_addr_copy(&hdr->d_addr, &hdr->s_addr);
 	prox_rte_ether_addr_copy(&dst_mac, &hdr->d_addr);
-	prox_rte_ipv4_hdr *ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
 	
 	prox_rte_ipv4_hdr *ip_hdr = NULL;
     size_t headers_size;
@@ -463,7 +462,6 @@ static inline void handle_icmp(struct task_base *tbase, struct rte_mbuf *mbuf)
                           return;
                        }
 
-	prox_rte_ipv4_hdr *ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
 	if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
 		tx_drop(mbuf);
 		return;
