@@ -256,6 +256,31 @@ static inline void handle_arp_request(struct task_base *tbase, struct rte_mbuf *
 	struct ip_port key;
 	key.ip = arp->data.tpa;
 	key.port = port;
+
+    uint16_t ether_type = ether_hdr->ether_type;
+    if (ether_type == ETYPE_VLAN) {
+            prox_rte_vlan_hdr *vlan_hdr = (prox_rte_vlan_hdr *)(ether_hdr + 1);
+            uint16_t vlan_tag = rte_be_to_cpu_16(vlan_hdr->vlan_tci) & 0x0FFF;
+            uint8_t vlan_match = 0;
+
+            for (uint8_t i = 0; i < prox_port_cfg[port].n_vlans; ++i) {
+                    if (vlan_tag != prox_port_cfg[port].vlan_tags[i]) {
+                            continue;
+                    } else {
+                                if (key.ip != rte_be_to_cpu_32(prox_port_cfg[port].ip_addr[i].ip)) {
+                                        tx_drop(mbuf);
+                                        return;
+                                }
+                                vlan_match = 1;
+                                break;
+                           }
+            }
+            if (!vlan_match) {
+                    tx_drop(mbuf);
+                    return;
+            }
+    }
+
 	if (task->internal_port_table[port].flags & HANDLE_RANDOM_IP_FLAG) {
 		prox_rte_ether_addr mac;
 		plogx_dbg("\tMaster handling ARP request for ip "IPv4_BYTES_FMT" on port %d which supports random ip\n", IP4(key.ip), key.port);
@@ -380,6 +405,18 @@ static inline void build_icmp_reply_message(struct task_base *tbase, struct rte_
 	prox_rte_ether_addr_copy(&hdr->d_addr, &hdr->s_addr);
 	prox_rte_ether_addr_copy(&dst_mac, &hdr->d_addr);
 	prox_rte_ipv4_hdr *ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
+	
+	prox_rte_ipv4_hdr *ip_hdr = NULL;
+    size_t headers_size;
+    if (hdr->ether_type == ETYPE_VLAN) {
+            struct rte_vlan_hdr *vlan_hdr = (struct rte_vlan_hdr *)(hdr + 1);
+            ip_hdr = (prox_rte_ipv4_hdr *)(vlan_hdr + 1);
+            headers_size = sizeof(struct rte_ether_hdr) + sizeof(struct rte_vlan_hdr) + sizeof(struct rte_ipv4_hdr);
+    } else {
+                ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
+                headers_size = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr);
+           }
+	
 	key.ip = ip_hdr->dst_addr;
 	ip_hdr->dst_addr = ip_hdr->src_addr;
 	ip_hdr->src_addr = key.ip;
@@ -392,16 +429,16 @@ static inline void build_icmp_reply_message(struct task_base *tbase, struct rte_
 		plogx_dbg("Master ignoring ICMP received on un-registered IP "IPv4_BYTES_FMT" on port %d\n", IP4(key.ip), mbuf->port);
 		tx_drop(mbuf);
 	} else {
-		struct rte_ring *ring = task->internal_ip_table[ret].ring;
-		mbuf->ol_flags &= ~(RTE_MBUF_F_TX_IP_CKSUM|RTE_MBUF_F_TX_UDP_CKSUM);
-		//Start changes to calculate ICMP checksum correctly
-        picmp->icmp_cksum = 0;
-        uint8_t *icmp_data_ptr = rte_pktmbuf_mtod_offset(mbuf, uint8_t *, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
-        int icmp_lenght = mbuf->pkt_len - sizeof(struct rte_ether_hdr) - sizeof(struct rte_ipv4_hdr);
-        picmp->icmp_cksum = checksum(icmp_data_ptr, icmp_lenght);
-        //End changes
-		tx_ring(tbase, ring, SEND_ICMP_FROM_MASTER, mbuf);
-	}
+		        struct rte_ring *ring = task->internal_ip_table[ret].ring;
+		        mbuf->ol_flags &= ~(RTE_MBUF_F_TX_IP_CKSUM|RTE_MBUF_F_TX_UDP_CKSUM);
+		        //Start changes to calculate ICMP checksum correctly
+                picmp->icmp_cksum = 0;
+                uint8_t *icmp_data_ptr = rte_pktmbuf_mtod_offset(mbuf, uint8_t *, headers_size);
+                int icmp_lenght = mbuf->pkt_len - headers_size;
+                picmp->icmp_cksum = checksum(icmp_data_ptr, icmp_lenght);
+                //End changes
+		        tx_ring(tbase, ring, SEND_ICMP_FROM_MASTER, mbuf);
+	       }
 }
 
 static inline void handle_icmp(struct task_base *tbase, struct rte_mbuf *mbuf)
@@ -410,16 +447,28 @@ static inline void handle_icmp(struct task_base *tbase, struct rte_mbuf *mbuf)
 	uint8_t port_id = get_port(mbuf);
 	struct port_table *port = &task->internal_port_table[port_id];
 	prox_rte_ether_hdr *hdr = rte_pktmbuf_mtod(mbuf, prox_rte_ether_hdr *);
-	if (hdr->ether_type != ETYPE_IPv4) {
-		tx_drop(mbuf);
-		return;
-	}
+
+    prox_rte_ipv4_hdr *ip_hdr = NULL;
+    if (hdr->ether_type == ETYPE_VLAN) {
+            struct rte_vlan_hdr *vlan_hdr = (struct rte_vlan_hdr *)(hdr + 1);
+            if (vlan_hdr->eth_proto != ETYPE_IPv4) {
+                    tx_drop(mbuf);
+                    return;
+            }
+                ip_hdr = (prox_rte_ipv4_hdr *)(vlan_hdr + 1);
+        } else if (hdr->ether_type == ETYPE_IPv4) {
+                        ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
+                } else {
+                          tx_drop(mbuf);
+                          return;
+                       }
+
 	prox_rte_ipv4_hdr *ip_hdr = (prox_rte_ipv4_hdr *)(hdr + 1);
 	if (ip_hdr->next_proto_id != IPPROTO_ICMP) {
 		tx_drop(mbuf);
 		return;
 	}
-	if (ip_hdr->dst_addr != port->ip) {
+	if (ip_hdr->dst_addr != port->ip && hdr->ether_type == ETYPE_IPv4) {
 		tx_drop(mbuf);
 		return;
 	}

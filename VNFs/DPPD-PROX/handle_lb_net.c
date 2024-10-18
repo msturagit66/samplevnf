@@ -563,6 +563,16 @@ static inline uint8_t handle_lb_net(struct task_lb_net *task, struct rte_mbuf *m
 		return lb_qinq(task, (struct qinq_hdr *)peth);
 	case ETYPE_IPv4:
 		return lb_ip4(task, (prox_rte_ipv4_hdr *)(peth + 1));
+	case ETYPE_VLAN:
+        struct rte_vlan_hdr *vlan_hdr = (struct rte_vlan_hdr *)(peth + 1);
+        if (vlan_hdr->eth_proto == ETYPE_ARP) {
+                return lb_mac(task, peth->s_addr);
+        } else if (vlan_hdr->eth_proto == ETYPE_IPv4) {
+                        return lb_ip4(task, (prox_rte_ipv4_hdr *)(vlan_hdr + 1));
+            } else {
+                        plogd_warn(mbuf, "Unexpected frame Ether type = %#06x for packet : \n", vlan_hdr->eth_proto);
+                        return OUT_DISCARD;
+                   }
 	case ETYPE_IPv6:
 		return lb_ip6(task, (prox_rte_ipv6_hdr *)(peth + 1));
 	case ETYPE_LLDP:
