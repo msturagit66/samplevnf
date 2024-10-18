@@ -58,8 +58,8 @@ struct l3_base {
 	uint32_t n_pkts;
 	uint32_t local_ipv4;
 	//Added to suport dedicated port different from Tx ports
-    //in routing and l3 submode with single Tx interface
-    uint8_t ctrlplane_pkt_tx_port;
+        //in routing and l3 submode with single Tx interface
+        uint8_t ctrlplane_pkt_tx_port;
 	uint8_t reachable_port_id;
 	uint8_t core_id;
 	uint8_t task_id;
