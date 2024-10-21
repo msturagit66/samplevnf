@@ -419,6 +419,7 @@ int lua_to_next_hop(struct lua_State *L, enum lua_place from, const char *name, 
 	uint32_t port_id;
 	uint32_t ip;
 	uint32_t mpls = 0;
+	uint16_t vlan_tag = 0;  //added to vlan tag packets out in routing mode
 	prox_rte_ether_addr mac;
 	int pop;
 
@@ -442,6 +443,7 @@ int lua_to_next_hop(struct lua_State *L, enum lua_place from, const char *name, 
 
 		lua_to_mac(L, TABLE, "mac", &mac);
 		lua_to_int(L, TABLE, "mpls", &mpls);
+		lua_to_int(L, TABLE, "vlan_tag", &vlan_tag);  //added to vlan tag packets out in routing mode
 		PROX_PANIC(port_id >= PROX_MAX_PORTS, "Port id too high (only supporting %d ports)\n", PROX_MAX_PORTS);
 		PROX_PANIC(next_hop_index >= MAX_HOP_INDEX, "Next-hop to high (only supporting %d next hops)\n", MAX_HOP_INDEX);
 
@@ -450,6 +452,7 @@ int lua_to_next_hop(struct lua_State *L, enum lua_place from, const char *name, 
 
 		ret[next_hop_index].mac_port.mac = mac;
 		ret[next_hop_index].mpls = mpls;
+		ret[next_hop_index].vlan_tag = vlan_tag;  //added to vlan tag packets out in routing mode
 
 		lua_pop(L, 1);
 	}

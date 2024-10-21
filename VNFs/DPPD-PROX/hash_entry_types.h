@@ -29,6 +29,7 @@ struct ether_addr_port {
 struct next_hop {
 	uint32_t                ip_dst;
 	uint32_t                mpls;
+	uint16_t                vlan_tag;  //added to vlan tag packets out in routing mode
 	union {
 		uint64_t               mac_port_8bytes;
 		struct ether_addr_port mac_port;

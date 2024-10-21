@@ -183,9 +183,19 @@ static int handle_routing_bulk(struct task_base *tbase, struct rte_mbuf **mbufs,
 
 static void set_l2(struct task_routing *task, struct rte_mbuf *mbuf, uint8_t nh_idx)
 {
-	prox_rte_ether_hdr *peth = rte_pktmbuf_mtod(mbuf, prox_rte_ether_hdr *);
-	*((uint64_t *)(&peth->d_addr)) = task->next_hops[nh_idx].mac_port_8bytes;
-	*((uint64_t *)(&peth->s_addr)) = task->src_mac[task->next_hops[nh_idx].mac_port.out_idx];
+        prox_rte_ether_hdr *peth = rte_pktmbuf_mtod(mbuf, prox_rte_ether_hdr *);
+        uint16_t eth_type = peth->ether_type;
+
+        *((uint64_t *)(&peth->d_addr)) = task->next_hops[nh_idx].mac_port_8bytes;
+        *((uint64_t *)(&peth->s_addr)) = task->src_mac[task->next_hops[nh_idx].mac_port.out_idx];
+
+        if (eth_type == ETYPE_VLAN) {
+                peth->ether_type = eth_type;
+                prox_rte_vlan_hdr *vlan_hdr = (prox_rte_vlan_hdr *)(peth + 1);
+                uint16_t vlan_id = rte_cpu_to_be_16(task->next_hops[nh_idx].vlan_tag);
+                vlan_hdr->vlan_tci = (vlan_hdr->vlan_tci & 0xF000) | (vlan_id & 0x0FFF);
+        }
+
 }
 
 static void set_l2_mpls(struct task_routing *task, struct rte_mbuf *mbuf, uint8_t nh_idx)
@@ -279,6 +289,11 @@ static inline uint8_t handle_routing(struct task_routing *task, struct rte_mbuf 
 	}
 	case ETYPE_IPv4:
 		return route_ipv4(task, (uint8_t*)peth, sizeof(*peth), mbuf);
+	case ETYPE_VLAN: {
+                /* skip VLAN header if any for routing */
+                prox_rte_vlan_hdr *vlan_hdr = (prox_rte_vlan_hdr *)(peth + 1);
+                return route_ipv4(task, (uint8_t*)vlan_hdr, sizeof(*vlan_hdr), mbuf);
+        }
 	case ETYPE_MPLSU: {
 		/* skip MPLS headers if any for routing */
 		struct mpls_hdr *mpls = (struct mpls_hdr *)(peth + 1);
