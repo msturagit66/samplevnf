@@ -346,6 +346,10 @@ static int get_global_cfg(__attribute__((unused))unsigned sindex, char *str, voi
 		return parse_str(pset->name, pkey, sizeof(pset->name));
 	}
 
+	if (STR_EQ(str, "esxi mellanox sriov")) {
+            return parse_bool(&pset->unset_dv_flow_en, pkey);
+    }
+
 	if (STR_EQ(str, "start time")) {
 		return parse_int(&pset->start_time, pkey);
 	}
@@ -2415,7 +2419,12 @@ int prox_setup_rte(const char *prog_name)
         if (prox_port_cfg[port_id].pci_addr[0] != '\0') {
             char *pci_addr = prox_port_cfg[port_id].pci_addr;
 
-            sprintf(rte_arg[++argc], "-a%s", pci_addr);
+            if (prox_cfg.unset_dv_flow_en) {
+                    sprintf(rte_arg[++argc], "-a%s,dv_flow_en=0", pci_addr);
+            } else {
+                      sprintf(rte_arg[++argc], "-a%s", pci_addr);
+                   }
+
             rte_argv[argc] = rte_arg[argc];
         }
     }

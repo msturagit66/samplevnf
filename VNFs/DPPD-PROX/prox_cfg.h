@@ -19,6 +19,7 @@
 
 #include <inttypes.h>
 #include <rte_ether.h>
+#include <stdbool.h>   /* Added to control mellanox card with sriov dv_flow_en sefined as boolean */
 
 #include "prox_globals.h"
 #include "ip6_addr.h"
@@ -74,6 +75,7 @@ struct prox_cfg {
 	uint32_t        heartbeat_timeout;
 	uint32_t        poll_timeout;
 	uint64_t        heartbeat_tsc;
+	bool            unset_dv_flow_en; /* added to unset dv_flow_en when sriov is used with mellanox on esxi */
 	struct ipv6_addr all_routers_ipv6_mcast_addr;
 	struct ipv6_addr all_nodes_ipv6_mcast_addr;
 	struct ipv6_addr random_ip;
