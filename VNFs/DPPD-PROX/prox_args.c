@@ -46,6 +46,7 @@
 
 #define MAX_RTE_ARGV 64
 #define MAX_ARG_LEN  256
+#define MAX_PCI_ADDR_LEN 64
 
 struct cfg_depr {
 	const char *opt;
@@ -583,10 +584,36 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
              return -1;
         }
 
-        strncpy(cfg->pci_addr, port_pci, sizeof(cfg->pci_addr) - 1);
-        cfg->pci_addr[sizeof(cfg->pci_addr) - 1] = '\0';
+        char *pci_addresses_copy = strdup(port_pci);
+        char *token = strtok(pci_addresses_copy, ",");
 
-        free(final_string); // Free allocated
+        while (token != NULL && pci_count < PROX_MAX_PORTS) {
+            strncpy(pci_addresses[pci_count], token, MAX_PCI_ADDR_LEN - 1);
+            pci_addresses[pci_count][MAX_PCI_ADDR_LEN - 1] = '\0';  // Ensure null-termination
+            pci_count++;
+
+            token = strtok(NULL, ",");
+        }
+
+        for (int i = 0; i < pci_count; i++) {
+            int used = 0;
+            for (int intf = 0; intf < cur_if; intf++) {
+                if (strcmp(prox_port_cfg[intf].pci_addr, pci_addresses[i]) == 0) {
+                    used = 1;
+                    break;
+                }
+            }
+
+            if (!used) {
+                strncpy(cfg->pci_addr, pci_addresses[i], sizeof(cfg->pci_addr) - 1);
+                cfg->pci_addr[sizeof(cfg->pci_addr) - 1] = '\0';
+                break;
+            }
+        }
+
+        // Free allocated memory
+        free(final_string);
+		free(pci_addresses_copy);
     }
 	else if (STR_EQ(str, "rx desc")) {
 		return parse_int(&cfg->n_rxd, pkey);
