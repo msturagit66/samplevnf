@@ -560,6 +560,8 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
 	else if (STR_EQ(str, "sriovdp resource name")) {
 		const char *resource_name = pkey;
 		const char *prefix = "PCIDEVICE_INTEL_COM_";
+		char pci_addresses[PROX_MAX_PORTS][MAX_PCI_ADDR_LEN];
+		int pci_count = 0;
 
 		// Create buffer for the uppercase string
 		char uppercase_string[48];
