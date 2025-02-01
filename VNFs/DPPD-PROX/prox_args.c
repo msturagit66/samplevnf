@@ -584,6 +584,7 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
              return -1;
         }
 
+		// Support multiple interfaces under teh same resource name
         char *pci_addresses_copy = strdup(port_pci);
         char *token = strtok(pci_addresses_copy, ",");
 
