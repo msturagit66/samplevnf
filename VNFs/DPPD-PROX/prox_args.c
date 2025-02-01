@@ -610,9 +610,8 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
                 break;
             }
         }
-
-    	// Free allocated memory
-    	free(final_string);
+		// Free allocated memory
+		free(final_string);
 		free(pci_addresses_copy);
     }
 	else if (STR_EQ(str, "rx desc")) {
