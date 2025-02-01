@@ -613,7 +613,7 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
 
         // Free allocated memory
         free(final_string);
-		free(pci_addresses_copy);
+	free(pci_addresses_copy);
     }
 	else if (STR_EQ(str, "rx desc")) {
 		return parse_int(&cfg->n_rxd, pkey);
