@@ -558,63 +558,63 @@ static int get_port_cfg(unsigned sindex, char *str, void *data)
 		return add_port_name(cur_if, pkey);
 	}
 	else if (STR_EQ(str, "sriovdp resource name")) {
-        const char *resource_name = pkey;
-        const char *prefix = "PCIDEVICE_INTEL_COM_";
+		const char *resource_name = pkey;
+		const char *prefix = "PCIDEVICE_INTEL_COM_";
 
-        // Create buffer for the uppercase string
-        char uppercase_string[48];
-        to_uppercase(resource_name, uppercase_string);
+		// Create buffer for the uppercase string
+		char uppercase_string[48];
+		to_uppercase(resource_name, uppercase_string);
 
-        // Allocate space for the final string
-        size_t final_length = strlen(prefix) + strlen(uppercase_string) + 1; // +1 for null terminator
-        char *final_string = (char *)malloc(final_length);
+		// Allocate space for the final string
+		size_t final_length = strlen(prefix) + strlen(uppercase_string) + 1; // +1 for null terminator
+		char *final_string = (char *)malloc(final_length);
 
-        if (final_string == NULL) {
-            set_errf("Memory allocation failed");
-            return -1;
-        }
+		if (final_string == NULL) {
+			set_errf("Memory allocation failed");
+			return -1;
+		}
         
 		// Concatenate the prefix and uppercase string
-        strcpy(final_string, prefix);
-        strcat(final_string, uppercase_string);
+		strcpy(final_string, prefix);
+		strcat(final_string, uppercase_string);
 
-        char *port_pci = getenv(final_string);
-        if (port_pci == NULL) {
-            set_errf("PCI addresses not found in environment variables");
-             return -1;
-        }
+		char *port_pci = getenv(final_string);
+		if (port_pci == NULL) {
+			set_errf("PCI addresses not found in environment variables");
+			return -1;
+		}
 
-		// Support multiple interfaces under teh same resource name
-        char *pci_addresses_copy = strdup(port_pci);
-        char *token = strtok(pci_addresses_copy, ",");
+		// Support multiple interfaces under the same resource name
+		char *pci_addresses_copy = strdup(port_pci);
+		char *token = strtok(pci_addresses_copy, ",");
 
-        while (token != NULL && pci_count < PROX_MAX_PORTS) {
-            strncpy(pci_addresses[pci_count], token, MAX_PCI_ADDR_LEN - 1);
-            pci_addresses[pci_count][MAX_PCI_ADDR_LEN - 1] = '\0';  // Ensure null-termination
-            pci_count++;
+		while (token != NULL && pci_count < PROX_MAX_PORTS) {
+			strncpy(pci_addresses[pci_count], token, MAX_PCI_ADDR_LEN - 1);
+			pci_addresses[pci_count][MAX_PCI_ADDR_LEN - 1] = '\0';  // Ensure null-termination
+			pci_count++;
 
-            token = strtok(NULL, ",");
-        }
+			token = strtok(NULL, ",");
+		}
 
-        for (int i = 0; i < pci_count; i++) {
-            int used = 0;
-            for (int intf = 0; intf < cur_if; intf++) {
-                if (strcmp(prox_port_cfg[intf].pci_addr, pci_addresses[i]) == 0) {
-                    used = 1;
-                    break;
-                }
-            }
+		for (int i = 0; i < pci_count; i++) {
+			int used = 0;
+			for (int intf = 0; intf < cur_if; intf++) {
+				if (strcmp(prox_port_cfg[intf].pci_addr, pci_addresses[i]) == 0) {
+					used = 1;
+					break;
+				}
+			}
 
-            if (!used) {
-                strncpy(cfg->pci_addr, pci_addresses[i], sizeof(cfg->pci_addr) - 1);
-                cfg->pci_addr[sizeof(cfg->pci_addr) - 1] = '\0';
-                break;
-            }
-        }
+			if (!used) {
+				strncpy(cfg->pci_addr, pci_addresses[i], sizeof(cfg->pci_addr) - 1);
+				cfg->pci_addr[sizeof(cfg->pci_addr) - 1] = '\0';
+				break;
+			}
+		}
 		// Free allocated memory
 		free(final_string);
 		free(pci_addresses_copy);
-    }
+	}
 	else if (STR_EQ(str, "rx desc")) {
 		return parse_int(&cfg->n_rxd, pkey);
 	}
