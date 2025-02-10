@@ -20,7 +20,7 @@
 /* PROGRAM_NAME defined through Makefile */
 #define VERSION_MAJOR 0      // Pre-production
 //#define VERSION_MINOR 2212   // 22.12 i.e. December 2022
-#define VERSION_MINOR "22.12-vmw1.5"   // Feb 1st 2025
+#define VERSION_MINOR "22.12-vmw1.6"   // Feb 10th 2025
 #define VERSION_REV   0
 
 static inline char *VERSION_STR(void)
