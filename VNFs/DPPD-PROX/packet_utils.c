@@ -548,7 +548,7 @@ void task_start_l3(struct task_base *tbase, struct task_args *targ)
         //Changed to suport dedicated port different from Tx ports
         //in routing and l3 submode with single Tx interface
 	struct prox_port_cfg *port = NULL;
-        if (targ->local_ipv4_port == 255) {
+        if (!targ->local_ipv4_port_set) {
                 port = find_reachable_port(targ);
         } else { port = &prox_port_cfg[targ->local_ipv4_port]; }
 	

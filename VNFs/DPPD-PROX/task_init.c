@@ -271,9 +271,8 @@ static size_t init_rx_tx_rings_ports(struct task_args *targ, struct task_base *t
 				tbase->tx_params_hw.tx_port_queue[i].queue = targ->tx_port_queue[i].queue;
 			}
 
-			//Added to suport dedicated port different from Tx ports
-		    //in routing and l3 submode with single Tx interface  
-             if (targ->local_ipv4_port !=255) {
+			//Added to suport dedicated port different from Tx ports in routing mode and l3 submode with single Tx interface  
+             if (targ->local_ipv4_port_set) {
                     tbase->tx_ctrlplane_params_hw.tx_port_queue = (struct port_queue *)(((uint8_t *)tbase) + offset);
                     offset += sizeof(struct port_queue);
                     tbase->tx_ctrlplane_params_hw.tx_port_queue->port = targ->tx_port_queue_ctrlplane.port;

@@ -1037,10 +1037,15 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
 
 		PROX_ASSERT(n_if-1 < PROX_MAX_PORTS);
 
-                for (uint8_t i = 0; i < n_if; ++i) {
-                        targ->tx_port_queue[i].port = ports[i];
-                        targ->nb_txports++;
-                }
+		if (targ->local_ipv4_port_set && n_if > 1) {
+			set_errf("Single Tx port wanted by the configuration but two Tx ports defined!");
+			return -1;
+		}
+
+		for (uint8_t i = 0; i < n_if; ++i) {
+			targ->tx_port_queue[i].port = ports[i];
+			targ->nb_txports++;
+		}
 
 		if (n_if > 1) {
 			targ->nb_worker_threads = targ->nb_txports;
@@ -1681,19 +1686,25 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
             uint32_t n_if = 0;
             uint32_t ports[PROX_MAX_PORTS];
 
+			if (targ->nb_txports > 1) {
+				set_errf("Single Tx port wanted by the configuration but two Tx ports defined!\n");
+				return -1;
+			}
+
             if ((targ->task_init->flag_features & TASK_FEATURE_ROUTING) && (targ->flags & TASK_ARG_L3)) {
                     if (parse_port_name_list(ports, &n_if, 1, pkey) == -1) {
-                            plog_err("IPv4 can be configured only for one port per task\n");
+                            set_errf("IPv4 can be configured only for one port per task\n");
                             return -1;
                     }
             } else {
                         parse_port_name_list(ports, &n_if, 1, pkey);
-                        plog_err("Configuring IPv4 on port %d requires routing mode and  l3 submode\n", ports[0]);
+                        set_errf("Configuring IPv4 on port %d requires routing mode and  l3 submode\n", ports[0]);
                         return -1;
                     }
 
             targ->local_ipv4_port = ports[0];
             targ->tx_port_queue_ctrlplane.port = ports[0];
+			targ->local_ipv4_port_set = true;
 
             return 0;
         }

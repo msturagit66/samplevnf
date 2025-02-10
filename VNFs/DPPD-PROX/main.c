@@ -331,10 +331,10 @@ static void configure_if_tx_queues(struct task_args *targ, uint8_t socket)
 			targ->tx_port_queue[i].queue = prox_port_cfg[if_port].n_txq;
 
 			//Added to suport dedicated port different from Tx ports
-            //in routing and l3 submode with single Tx interface						
-            if (targ->local_ipv4_port != 255) {
-                    targ->tx_port_queue_ctrlplane.queue = prox_port_cfg[if_port].n_txq;
-            }
+			//in routing and l3 submode with single Tx interface						
+			if (targ->local_ipv4_port_set) {
+				targ->tx_port_queue_ctrlplane.queue = prox_port_cfg[if_port].n_txq;
+			}
 			
 			prox_port_cfg[if_port].n_txq++;
 		} else {
