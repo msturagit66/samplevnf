@@ -505,8 +505,10 @@ void task_init_l3(struct task_base *tbase, struct task_args *targ)
 		hash_name[0]++;
 
 		//Added to suport dedicated port different from Tx ports
-                //in routing and l3 submode with single Tx interface				
-                tbase->l3.ctrlplane_pkt_tx_port = targ->local_ipv4_port;
+		//in routing and l3 submode with single Tx interface				
+		if (targ->local_ipv4_port_set) {
+			tbase->l3.ctrlplane_pkt_tx_port = targ->local_ipv4_port;
+		} else { tbase->l3.ctrlplane_pkt_tx_port = 255; }
 	}
 
 	if (targ->flags & TASK_ARG_NDP) {
